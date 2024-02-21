@@ -10,59 +10,52 @@ class UserController extends Controller
 {
     public function processForm(Request $request)
     {
-        try {
+        // Validazione dei dati del form
+        $request->validate([
+            'nome' => 'required',
+            'cognome' => 'required',
+            'email' => 'required|email',
+            'codice_tessera' => 'required',
+            'note' => 'nullable',
+            'livello' => 'nullable|numeric'
+        ]);
 
-            // Validazione dei dati del form
-            $request->validate([
-                'nome' => 'required',
-                'cognome' => 'required',
-                'email' => 'required|email',
-                'codice_tessera' => 'required',
-            ]);
+        // Assegnazione del valore del campo 'codice_tessera'
+        $codiceTessera = $request->input('codice_tessera');
 
-            // Assegnazione del valore del campo 'codice_tessera'
-            $codiceTessera = $request->input('codice_tessera');
+        // Esegui la chiamata server-to-server al web service REST
+        $response = Http::withOptions([
+            'verify' => false,
+        ])->post("https://www.aicod.it/test_data/user_info.php?codice_tessera=$codiceTessera");
 
-            // Esegui la chiamata server to server al web service REST
-            $response = Http::withOptions([
-                'verify' => false,
-            ])->post("https://www.aicod.it/test_data/user_info.php?codice_tessera=$codiceTessera");
+        // Estrazione dei dati JSON dalla risposta HTTP
+        $userData = $response->json();
 
-            // Estrazione dei dati JSON dalla risposta HTTP
-            $userData = $response->json();
+        if (isset($userData['user_type'])) {
+            if ($userData['user_type'] == 'subscriber') {
+                // Aggiungi una riga alla tabella users
+                User::create([
+                    'nome' => $request->input('nome'),
+                    'cognome' => $request->input('cognome'),
+                    'email' => $request->input('email'),
+                    'codice_tessera' => $codiceTessera,
+                    'note' => $request->input('note'),
+                    'livello' => $request->input('livello')
+                ]);
 
-            // In base al valore di user_type
-            switch ($userData['user_type']) {
-                case 'subscriber':
-                    // Aggiungi una riga alla tabella users
-                    User::create([
-                        'nome' => $request->input('nome'),
-                        'cognome' => $request->input('cognome'),
-                        'email' => $request->input('email'),
-                        'codice_tessera' => $codiceTessera,
-                    ]);
-
-                    return "Utente aggiunto con successo.";
-
-                case 'unsubscriber':
-                    // Rimuovi l'utente dal database
-            //         User::where('email', $request->input('email'))
-            //             ->where('codice_tessera', $codiceTessera)
-            //             ->delete();
-
-                    // Visualizza un messaggio nella console
-                    // dd("Utente rimosso con successo.");
-
-                    return "Utente rimosso con successo.";
-
-                case 'blocked':
-                    // Mostra un messaggio di utenza non attiva
-                    return "La tua utenza non è attiva.";
-
+                return "Utente aggiunto con successo.";
+            } elseif ($userData['user_type'] == 'unsubscriber') {
+                // Rimuovi l'utente dal database
+                User::where('email', $request->input('email'))
+                    ->where('codice_tessera', $codiceTessera)
+                    ->delete();
+                return "Utente rimosso con successo.";
+            } else{
+                return "La tua utenza non è attiva.";
             }
-        } catch (\Exception $e) {
-            // Visualizza l'errore nella console
-            dd($e->getMessage());
+        } else {
+            // La chiave 'user_type' non è presente nell'array $userData
+            return "Dati utente non validi o mancanti nella risposta.";
         }
     }
 }
