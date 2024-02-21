@@ -17,4 +17,5 @@ use App\Http\Controllers\UserController;
 Route::get('/', function () {
     return view('index');
 });
+
 Route::post('/process-form', [UserController::class, 'processForm'])->name('users.processForm');

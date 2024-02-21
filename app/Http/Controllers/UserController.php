@@ -32,7 +32,7 @@ class UserController extends Controller
         $userData = $response->json();
 
         if (isset($userData['user_type'])) {
-            if ($userData['user_type'] == 'subscriber') {
+            if ($userData['user_type'] == 'subscriber'){
                 // Aggiungi una riga alla tabella users
                 User::create([
                     'nome' => $request->input('nome'),
@@ -44,16 +44,22 @@ class UserController extends Controller
                 ]);
 
                 return "Utente aggiunto con successo.";
-            } elseif ($userData['user_type'] == 'unsubscriber') {
+            }
+            elseif ($userData['user_type'] == 'unsubscriber'){
                 // Rimuovi l'utente dal database
                 User::where('email', $request->input('email'))
                     ->where('codice_tessera', $codiceTessera)
                     ->delete();
+
                 return "Utente rimosso con successo.";
-            } else{
+            } 
+            
+            else{
                 return "La tua utenza non è attiva.";
             }
-        } else {
+        }
+
+        else{
             // La chiave 'user_type' non è presente nell'array $userData
             return "Dati utente non validi o mancanti nella risposta.";
         }
